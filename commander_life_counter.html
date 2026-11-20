@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><title>Commander Counter</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#12151b;color:#fff;font-family:Arial,sans-serif;-webkit-user-select:none;user-select:none}
+#board{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap}
+.player{position:relative;width:50%;height:50%;overflow:hidden;border:2px solid #111;transition:background .25s}
+.player:nth-child(1){background:#34495e;transform:rotate(180deg)}.player:nth-child(2){background:#514063;transform:rotate(180deg)}
+.player:nth-child(3){background:#375747}.player:nth-child(4){background:#694437}
+.name{position:absolute;top:6px;left:0;width:100%;text-align:center;font-weight:bold;font-size:14px;letter-spacing:2px}
+.life{position:absolute;top:19%;left:0;width:100%;text-align:center;font-weight:bold;font-size:78px;line-height:1;text-shadow:0 3px 8px #222}
+.adjust{position:absolute;bottom:7%;height:28%;width:25%;border:0;border-radius:12px;background:rgba(0,0,0,.24);color:white;font-size:38px;font-weight:bold}
+.minus{left:5%}.plus{right:5%}
+.sub{position:absolute;bottom:7%;left:33%;width:34%;height:28%;border:1px solid #ffffff44;border-radius:9px;background:#0005;color:white;font-size:12px;line-height:1.5}
+.dead{background:#291c20!important;animation:flash .65s 3}.dead .life{color:#ff6969;text-decoration:line-through}
+@-webkit-keyframes flash{0%,100%{opacity:1}50%{opacity:.45}}@keyframes flash{0%,100%{opacity:1}50%{opacity:.45}}
+#center{position:absolute;left:50%;top:50%;width:92px;height:92px;margin:-46px 0 0 -46px;background:#17191f;border:3px solid #a88c5a;border-radius:50%;z-index:4;display:flex;align-items:center;justify-content:center;flex-direction:column;box-shadow:0 0 12px #0009}
+#center button{border:0;background:none;color:#f2d69d;font-size:12px;padding:3px}
+#modal{display:none;position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);width:310px;max-width:90%;background:#1b202a;border:2px solid #d1a95d;border-radius:16px;padding:16px;box-shadow:0 0 0 1000px #000a;text-align:center}
+#modal h2{margin:0 0 12px;font-size:21px}#modal button{border:0;border-radius:8px;background:#35455c;color:#fff;font-size:17px;padding:11px;margin:4px;min-width:64px}
+#modal .close{background:#a87935}.stat{font-size:20px;margin:10px}
+#toast{position:absolute;z-index:11;left:50%;top:50%;transform:translate(-50%,-50%);background:#161a23;border:2px solid #d9ae61;border-radius:20px;padding:22px;font-size:64px;font-weight:bold;display:none;pointer-events:none}
+@media(max-height:550px){.life{font-size:63px}.name{font-size:12px}.adjust{font-size:30px}#center{width:78px;height:78px;margin:-39px 0 0 -39px}}
+</style></head><body>
+<div id="board"></div><div id="center"><button onclick="roll()">⚄ Würfel</button><button onclick="undo()">↶ Undo</button><button onclick="openMenu()">⚙ Menü</button></div>
+<div id="modal"><h2 id="mtitle">Spieler</h2><div id="mbody"></div><button class="close" onclick="closeMenu()">Fertig</button></div><div id="toast"></div>
+<script>
+var players=[{name:'SPIELER 1',life:40,poison:0,cmd:[0,0,0,0]},{name:'SPIELER 2',life:40,poison:0,cmd:[0,0,0,0]},{name:'SPIELER 3',life:40,poison:0,cmd:[0,0,0,0]},{name:'SPIELER 4',life:40,poison:0,cmd:[0,0,0,0]}],history=[],selected=0;
+try{var saved=JSON.parse(localStorage.getItem('commander-counter-v1'));if(saved&&saved.length===4)players=saved}catch(e){}
+function save(){try{localStorage.setItem('commander-counter-v1',JSON.stringify(players))}catch(e){}}
+function snapshot(){history.push(JSON.stringify(players));if(history.length>60)history.shift()}
+function draw(){var out='';for(var i=0;i<4;i++){var p=players[i],dead=p.life<=0||p.poison>=10||Math.max.apply(null,p.cmd)>=21;out+='<div class="player'+(dead?' dead':'')+'"><div class="name">'+p.name+'</div><div class="life">'+p.life+'</div><button class="adjust minus" onclick="change('+i+',-1)">−</button><button class="sub" onclick="playerMenu('+i+')">☠ '+p.poison+' Gift<br>⚔ Schaden</button><button class="adjust plus" onclick="change('+i+',1)">+</button></div>'}document.getElementById('board').innerHTML=out;save()}
+function change(i,n){snapshot();players[i].life+=n;draw()}
+function poison(i,n){snapshot();players[i].poison=Math.max(0,players[i].poison+n);draw();playerMenu(i)}
+function commander(i,source,n){snapshot();players[i].cmd[source]=Math.max(0,players[i].cmd[source]+n);players[i].life+=n<0?1:-1;draw();playerMenu(i)}
+function playerMenu(i){selected=i;document.getElementById('mtitle').innerHTML=players[i].name;var h='<div class="stat">Gift: '+players[i].poison+'</div><button onclick="poison('+i+',-1)">− Gift</button><button onclick="poison('+i+',1)">+ Gift</button><div style="margin-top:10px;font-size:13px">Commander-Schaden erhalten von:</div>';for(var j=0;j<4;j++){if(j!==i)h+='<div style="font-size:13px;margin-top:3px">Spieler '+(j+1)+': '+players[i].cmd[j]+' <button onclick="commander('+i+','+j+',-1)">−</button><button onclick="commander('+i+','+j+',1)">+</button></div>'}document.getElementById('mbody').innerHTML=h;document.getElementById('modal').style.display='block'}
+function openMenu(){document.getElementById('mtitle').innerHTML='Commander Counter';document.getElementById('mbody').innerHTML='<button onclick="roll()">W20 würfeln</button><button onclick="undo()">Rückgängig</button><button onclick="reset()">Neues Spiel</button><div style="font-size:12px;margin-top:12px">Offline · 4 Spieler · 40 Leben</div>';document.getElementById('modal').style.display='block'}
+function closeMenu(){document.getElementById('modal').style.display='none'}
+function undo(){if(history.length){players=JSON.parse(history.pop());draw()}closeMenu()}
+function reset(){if(confirm('Neues Spiel starten und alle Werte zurücksetzen?')){snapshot();for(var i=0;i<4;i++){players[i].life=40;players[i].poison=0;players[i].cmd=[0,0,0,0]}draw();closeMenu()}}
+function roll(){closeMenu();var v=1+Math.floor(Math.random()*20),t=document.getElementById('toast');t.innerHTML='⚄ '+v;t.style.display='block';t.style.webkitAnimation='flash .22s 3';setTimeout(function(){t.style.display='none';t.style.webkitAnimation=''},1100)}
+draw();
+</script></body></html>
